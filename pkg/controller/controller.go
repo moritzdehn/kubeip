@@ -254,6 +254,7 @@ func (c *Controller) processItem(newEvent Event) error {
 				logrus.WithFields(logrus.Fields{"pkg": "kubeip-" + newEvent.resourceType, "function": "processItem"}).Infof("Processing add to %v: %s ", newEvent.resourceType, node)
 				inst.Name = node
 				inst.ProjectID = c.projectID
+				inst.Labels = labels
 				c.instance <- inst
 				logrus.WithFields(logrus.Fields{"pkg": "kubeip-" + newEvent.resourceType, "function": "processItem"}).Infof("Processing node %s of cluster %s in zone %s", node, c.clusterName, inst.Zone)
 				return nil

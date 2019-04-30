@@ -73,7 +73,7 @@ func ProjectName() (string, error) {
 	return metadata.ProjectID()
 }
 
-func FindFreeAddress(projectID string, region string, config *cfg.Config) (string, error) {
+func FindFreeAddress(projectID string, region string, nodeLabel string, config *cfg.Config) (string, error) {
 	ctx := context.Background()
 	hc, err := google.DefaultClient(ctx, container.CloudPlatformScope)
 	if err != nil {
@@ -85,7 +85,11 @@ func FindFreeAddress(projectID string, region string, config *cfg.Config) (strin
 		logrus.Error(err)
 		return "", err
 	}
-	filter := "(labels." + config.LabelKey + "=" + config.LabelValue + ")"
+	filter := "(labels." + config.LabelKey + "=" + config.LabelValue
+	if len(nodeLabel) > 0 {
+		filter = filter + " AND labels.kubeip-node="+ nodeLabel
+	}
+	filter = filter +  ")"
 	addresses, err := computeService.Addresses.List(projectID, region).Filter("(status=RESERVED) AND " + filter).Do()
 	if err != nil {
 		logrus.WithFields(logrus.Fields{"pkg": "kubeip", "function": "FindFreeAddress"}).Errorf("Failed to list IP addresses in region %s: %q", region, err)
@@ -99,25 +103,25 @@ func FindFreeAddress(projectID string, region string, config *cfg.Config) (strin
 
 }
 
-func replaceIP(projectID string, zone string, instance string, config *cfg.Config) error {
+func replaceIP(projectID string, zone string, instance string,nodeLabel string, config *cfg.Config) error {
 	ctx := context.Background()
 	hc, err := google.DefaultClient(ctx, container.CloudPlatformScope)
 	if err != nil {
 		logrus.Fatalf("Could not get authenticated client: %v", err)
 	}
 	region := zone[:len(zone)-2]
-	addr, err := FindFreeAddress(projectID, region, config)
-	if err != nil {
-		logrus.Infof(err.Error())
-		return err
-	}
-	logrus.WithFields(logrus.Fields{"pkg": "kubeip", "function": "replaceIP"}).Infof("Found reserved address %s", addr)
 	computeService, err := compute.New(hc)
 	_, err = computeService.Instances.Get(projectID, zone, instance).Do()
 	if err != nil {
 		logrus.WithFields(logrus.Fields{"pkg": "kubeip", "function": "replaceIP"}).Errorf("Instance not found %s zone %s: %q", instance, zone, err)
 		return err
 	}
+	addr, err := FindFreeAddress(projectID, region,nodeLabel, config)
+	if err != nil {
+		logrus.Infof(err.Error())
+		return err
+	}
+	logrus.WithFields(logrus.Fields{"pkg": "kubeip", "function": "replaceIP"}).Infof("Found reserved address %s", addr)
 	op, err := computeService.Instances.DeleteAccessConfig(projectID, zone, instance, "external-nat", "nic0").Do()
 	if err != nil {
 		logrus.Errorf("DeleteAccessConfig %q", err)
@@ -199,7 +203,8 @@ func Kubeip(instance <-chan types.Instance, config *cfg.Config) {
 	for {
 		inst := <-instance
 		logrus.WithFields(logrus.Fields{"pkg": "kubeip", "function": "Kubeip"}).Infof("Working on %s in zone %s", inst.Name, inst.Zone)
-		replaceIP(inst.ProjectID, inst.Zone, inst.Name, config)
+		kubeipNode := inst.Labels["kubeip-node"]
+		replaceIP(inst.ProjectID, inst.Zone, inst.Name, kubeipNode, config)
 	}
 }
 

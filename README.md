@@ -99,6 +99,9 @@ We recommend that KUBEIP_NODEPOOL should *NOT* be the same as KUBEIP_SELF_NODEPO
 sed -i "s/pool-kubip/$KUBEIP_SELF_NODEPOOL/g" deploy/kubeip-deployment.yaml
 </pre>
 
+You can also assigned ip's to a specfic nodes.
+KubeIP will match IP adressess labled with kubeip-node and use the value of the lable to find nodes with this tag.
+
 Deploy kubeIP by running: 
 
 ```

@@ -24,4 +24,5 @@ type Instance struct {
 	ProjectID string
 	Name      string
 	Zone      string
+	Labels    map[string]string
 }
