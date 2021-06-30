@@ -19,7 +19,7 @@ spec:
       spec:
         priorityClassName: system-cluster-critical
         nodeSelector:
-          cloud.google.com/gke-nodepool: pool-kubip
+          cloud.google.com/gke-nodepool: kube-ip-pool-1
         containers:
         - name: "kubeip"
           image: doitintl/kubeip:latest

@@ -17,3 +17,6 @@
 
 # Test binary, build with `go test -c`
 *.test
+
+# serviceaccount key
+key.json
